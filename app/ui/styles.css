@@ -151,7 +151,7 @@ textarea:focus { border-color: var(--accent); }
 }
 
 /* rapid demo */
-.rapid { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.rapid { margin: 10px 0 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
 .rapid-btn { background: var(--ink); color: #fff; border: 0; padding: 9px 18px; border-radius: 10px; font-size: 14px; letter-spacing: 0.08em; cursor: pointer; }
 .rapid-btn.running { background: var(--rec); }
 .rapid-btn:disabled { opacity: 0.5; cursor: wait; }
