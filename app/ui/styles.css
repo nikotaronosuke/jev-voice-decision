@@ -144,7 +144,7 @@ textarea:focus { border-color: var(--accent); }
 .small { font-size: 13px; }
 .tiny { font-size: 12px; }
 
-@media (max-width: 1180px) {
+@media (max-width: 1000px) {
   .flow { grid-template-columns: 1fr 1fr; }
   .arrow { display: none; }
   .card { min-height: 0; }
