@@ -2,6 +2,10 @@
 
 日本語の音声を文字起こしし、Jevで“回答生成ではなく判断”を行うリアルタイムデモ。
 
+![RAPID DEMO の様子: 架空のコメントが次々に typed decision とアクションへ変わる](docs/assets/jev-voice-decision-demo.gif)
+
+約 30 秒の紹介動画（mp4）は [Releases](https://github.com/nikotaronosuke/jev-voice-decision/releases) に置いています。上の GIF は実際の画面録画です（速度は変えていません）。
+
 音声 → テキスト → 判断 → アクション、という流れを一画面で見せます。
 音声認識（STT）は端末内で行い、判断は TypeSafe の System One モデル **Jev** が担当します。
 Jev は文章を生成しません。曖昧な日本語の発話を、コードがそのまま分岐に使える
