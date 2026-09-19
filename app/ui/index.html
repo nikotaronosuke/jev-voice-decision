@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jev Voice Decision</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Jev Voice Decision</h1>
+      <p class="subtitle">音声を文章ではなく、判断に変える。</p>
+    </div>
+    <div class="mode" role="group" aria-label="モード">
+      <button id="mode-text" class="mode-btn active" type="button">TEXT</button>
+      <button id="mode-voice" class="mode-btn" type="button" disabled title="Phase 2 で有効になります">VOICE</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <main class="flow">
+    <section class="card" id="card-input" data-stage="input">
+      <h2>🎙 INPUT</h2>
+      <textarea id="input-text" rows="5" placeholder="例：これって無料で使えますか？"></textarea>
+      <div class="row">
+        <button id="decide" class="primary" type="button">判断する</button>
+        <span id="input-status" class="muted"></span>
+      </div>
+      <p class="muted small">Demo examples（クリックで入力欄へ。自動送信はしません）</p>
+      <div id="examples" class="chips"></div>
+    </section>
+
+    <div class="arrow" aria-hidden="true">→</div>
+
+    <section class="card" id="card-transcript" data-stage="transcript">
+      <h2>📝 TRANSCRIPT</h2>
+      <p id="transcript" class="transcript placeholder">（ここに文字起こしが表示されます）</p>
+      <p id="transcript-status" class="muted small"></p>
+    </section>
+
+    <div class="arrow" aria-hidden="true">→</div>
+
+    <section class="card" id="card-jev" data-stage="jev">
+      <h2>🧠 JEV DECISIONS</h2>
+      <div id="jev-empty" class="placeholder">（判断すると、Jevの出力分布がここに表示されます）</div>
+      <div id="jev-body" hidden>
+        <h3>主な意図 <span class="tag">Choice</span></h3>
+        <div id="intent-bars" class="bars"></div>
+        <p class="muted small">confidence <span id="intent-confidence"></span></p>
+
+        <h3>返答が必要？ <span class="tag">Noul</span></h3>
+        <div id="needs-bars" class="bars"></div>
+
+        <h3>優先度 <span class="tag">Score</span></h3>
+        <div class="scale">
+          <div class="scale-track"><div id="priority-marker" class="scale-marker"></div></div>
+          <div class="scale-ends"><span>低</span><span>高</span></div>
+        </div>
+        <div id="priority-bars" class="bars compact"></div>
+        <p class="muted small">score <span id="priority-score"></span> / confidence <span id="priority-confidence"></span></p>
+
+        <p id="jev-meta" class="muted tiny"></p>
+      </div>
+    </section>
+
+    <div class="arrow" aria-hidden="true">→</div>
+
+    <section class="card" id="card-action" data-stage="action">
+      <h2>⚡ ACTION</h2>
+      <div id="action-empty" class="placeholder">（Python の規則で決まったアクションがここに表示されます）</div>
+      <div id="action-body" hidden>
+        <p id="action-intent" class="action-intent"></p>
+        <p class="action-arrow">↓</p>
+        <p id="action-label" class="action-label"></p>
+        <div id="action-badges" class="badges"></div>
+        <ol id="action-rules" class="rules"></ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bottom">
+    <section class="history">
+      <h2>このセッションの履歴</h2>
+      <ul id="history"></ul>
+      <p class="muted tiny">履歴はこのアプリのメモリにだけ保持され、終了すると消えます。</p>
+    </section>
+    <p id="privacy-note" class="muted tiny" hidden>音声は端末内で処理し、文字起こし結果だけをJevへ送信します</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

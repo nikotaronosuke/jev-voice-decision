@@ -1,0 +1,23 @@
+# virtual environments / caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+
+# secrets: the API key lives only in the environment or an untracked .env
+.env
+.env.*
+!.env.example
+
+# never commit audio, transcripts, logs, or models
+*.wav
+*.flac
+*.mp3
+*.ogg
+logs/
+artifacts/
+models/
+
+# local tooling
+.claude/

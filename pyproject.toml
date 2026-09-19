@@ -1,0 +1,16 @@
+[project]
+name = "jev-voice-decision"
+version = "0.1.0"
+description = "Japanese speech -> local transcript -> Jev typed decisions -> deterministic action, visualized in real time."
+requires-python = ">=3.10"
+dependencies = [
+    "typesafe-sdk>=0.7.0",
+    "pywebview>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
