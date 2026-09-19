@@ -3,6 +3,8 @@ name = "jev-voice-decision"
 version = "0.1.0"
 description = "Japanese speech -> local transcript -> Jev typed decisions -> deterministic action, visualized in real time."
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "typesafe-sdk>=0.7.0",
     "pywebview>=6.0",

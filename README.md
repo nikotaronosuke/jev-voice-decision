@@ -138,4 +138,4 @@ scripts/                … 起動、実 API smoke、privacy scan
 
 ## ライセンス
 
-未定（公開時に決めます）。
+MIT License（[LICENSE](LICENSE) を参照）。
