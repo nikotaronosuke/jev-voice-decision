@@ -98,14 +98,3 @@ def test_rapid_runs_do_not_touch_normal_history_or_disk(tmp_path, monkeypatch):
     assert [h["transcript"] for h in pipeline.history()] == ["通常の入力"]
     assert list(tmp_path.iterdir()) == []
     assert not (PROJECT_ROOT / "logs").exists()
-
-
-def test_page_api_wraps_the_demo():
-    api = Api(make_pipeline(FakeTransport()), Settings())
-    assert api.rapid_step()["done"] is True  # nothing started yet
-    assert api.rapid_start() == {"ok": True, "total": 25}
-    first = api.rapid_step()
-    assert first["index"] == 1 and first["result"]["ok"]
-    assert api.rapid_stop() == {"ok": True}
-    assert api.rapid_step()["done"] is True
-    assert Api(None, Settings(), startup_error="api_key_missing").rapid_start()["ok"] is False

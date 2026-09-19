@@ -17,7 +17,7 @@ from app.config import (DEFAULT_SETTINGS, PROJECT_ROOT, Settings, VoiceSettings,
 from app.jev.client import ERROR_MESSAGES_JA, JevClient, JevError
 from app.jev.questions import INTENT_IDS, INTENT_LABELS_JA, PRIORITY_LABELS_JA, PRIORITY_LEVELS
 from app.pipeline import Pipeline
-from app.rapid import RapidDemo, load_rapid_comments
+from app.rapid import RapidRunner
 from app.stt.microphone import MicrophoneCapture, MicrophoneError
 from app.stt.parakeet import STT_MESSAGES_JA, ParakeetTranscriber, SttError
 
@@ -50,7 +50,7 @@ class Api:
         self._capture: MicrophoneCapture | None = None
         self._capture_lock = threading.Lock()
         self._level = 0.0
-        self._rapid: RapidDemo | None = None
+        self._rapid: RapidRunner | None = None
 
     # ---- plumbing -----------------------------------------------------------
     def attach_window(self, window: Any) -> None:
@@ -75,6 +75,8 @@ class Api:
         self._level = level
 
     def shutdown(self) -> None:
+        if self._rapid is not None:
+            self._rapid.stop()
         with self._capture_lock:
             if self._capture is not None:
                 self._capture.stop()
@@ -123,17 +125,20 @@ class Api:
     def history(self) -> list[dict[str, Any]]:
         return self._pipeline.history() if self._pipeline else []
 
-    # ---- rapid demo: one real request at a time, driven step by step from the page ----
+    # ---- rapid demo: bounded concurrency, real requests, results drained by the page ----
     def rapid_start(self) -> dict[str, Any]:
         if self._pipeline is None:
             return {"ok": False, "error_message": ERROR_MESSAGES_JA.get(self._startup_error or "unknown", ERROR_MESSAGES_JA["unknown"])}
-        self._rapid = RapidDemo(self._pipeline)
+        if self._rapid is not None and not self._rapid.finished:
+            self._rapid.stop()
+        self._rapid = RapidRunner(self._pipeline)
+        self._rapid.start()
         return {"ok": True, "total": self._rapid.total}
 
-    def rapid_step(self) -> dict[str, Any]:
+    def rapid_poll(self) -> dict[str, Any]:
         if self._rapid is None:
-            return {"done": True, "index": 0, "total": len(load_rapid_comments()), "stopped": True}
-        return self._rapid.step()
+            return {"results": [], "completed": 0, "total": 0, "finished": True, "stopped": True, "in_flight": 0, "limit": 0}
+        return self._rapid.poll()
 
     def rapid_stop(self) -> dict[str, Any]:
         if self._rapid is not None:

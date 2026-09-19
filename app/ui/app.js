@@ -255,9 +255,8 @@
     setStage("idle");
   }
 
-  // ---- rapid demo: one real request at a time, rendered as it arrives ----
-  const rapid = { running: false, stopRequested: false, finished: false };
-  const RAPID_DWELL_MS = 160;
+  // ---- rapid demo: results arrive from a bounded-concurrency runner and are shown one by one ----
+  const rapid = { running: false, stopRequested: false, finished: false, queue: [], polling: null };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   function setRapidUi() {
@@ -276,37 +275,52 @@
     $("rapid-bar-fill").style.width = total ? `${Math.round((index / total) * 100)}%` : "0%";
   }
 
+  function showRapidItem(item, shown, total) {
+    $("input-text").value = item.text;
+    $("transcript").textContent = item.text;
+    $("transcript").classList.remove("placeholder");
+    setRapidProgress(shown, total);
+    if (item.result.ok) {
+      renderDecisions(item.result.decisions);
+      renderAction(item.result);
+      setStage("complete");
+    } else {
+      resetOutputs();
+      setStage("error");
+      $("action-empty").textContent = item.result.error_message || "Jevから判断を取得できませんでした";
+      $("action-empty").hidden = false;
+    }
+  }
+
   async function runRapidDemo() {
     const started = await window.pywebview.api.rapid_start();
     if (!started.ok) { showBanner(started.error_message || "Jevから判断を取得できませんでした"); return; }
-    rapid.running = true; rapid.stopRequested = false; rapid.finished = false;
+    rapid.running = true; rapid.stopRequested = false; rapid.finished = false; rapid.queue = [];
     state.busy = true;
     showBanner("");
     setRapidUi();
     setRapidProgress(0, started.total);
+    setStage("deciding");
+    let runnerFinished = false;
+    let shown = 0;
+    rapid.polling = setInterval(async () => {
+      try {
+        const p = await window.pywebview.api.rapid_poll();
+        rapid.queue.push(...p.results);
+        if (p.finished) runnerFinished = true;
+      } catch (_error) { /* transient bridge error: keep polling */ }
+    }, 120);
     try {
-      while (!rapid.stopRequested) {
-        setStage("deciding");
-        const step = await window.pywebview.api.rapid_step();
-        if (!("text" in step)) break;
-        $("input-text").value = step.text;
-        $("transcript").textContent = step.text;
-        $("transcript").classList.remove("placeholder");
-        setRapidProgress(step.index, step.total);
-        if (step.result.ok) {
-          renderDecisions(step.result.decisions);
-          renderAction(step.result);
-          setStage("complete");
-        } else {
-          resetOutputs();
-          setStage("error");
-          $("action-empty").textContent = step.result.error_message || "Jevから判断を取得できませんでした";
-          $("action-empty").hidden = false;
-        }
-        if (step.done) break;
-        await sleep(RAPID_DWELL_MS);
+      while (!(runnerFinished && rapid.queue.length === 0)) {
+        if (rapid.queue.length === 0) { await sleep(40); continue; }
+        const item = rapid.queue.shift();
+        shown += 1;
+        showRapidItem(item, shown, started.total);
+        // dwell long enough to read, shorter when results are queuing up
+        await sleep(Math.max(45, 140 - rapid.queue.length * 8));
       }
     } finally {
+      clearInterval(rapid.polling); rapid.polling = null;
       rapid.running = false; rapid.finished = true;
       state.busy = false;
       $("action-empty").textContent = "（Python の規則で決まったアクションがここに表示されます）";

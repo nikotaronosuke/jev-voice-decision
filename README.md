@@ -56,7 +56,7 @@ Python 側の規則（`app/actions.py`）:
 ## 2 つのモード
 
 - **TEXT**: 日本語を入力して「判断する」。Demo examples をクリックすると入力欄に入ります（自動送信はしません）。
-- **RAPID DEMO**（TEXT 内のボタン）: 架空の日本語コメント 25 件を順番に 1 件ずつ Jev へ送り、typed decision とアクションが次々切り替わる様子を確認できます（`fixtures/rapid-demo-comments.json`。並列送信はせず、1 件の応答が返ってから次を送ります。履歴には残しません）。
+- **RAPID DEMO**（TEXT 内のボタン）: 架空の日本語コメント 200 件（`fixtures/rapid-demo-200.json`）を Jev へ送り、typed decision とアクションが返ってきた順に次々切り替わる様子を確認できます。同時に送るのは最大 `RAPID_CONCURRENCY` 件（既定 12）で、rate limit の応答があれば新規送信を一時停止して同時数を下げます。結果は事前計算せず、履歴にも残しません。
 - **VOICE**: 「録音開始」で話し、「停止」で文字起こしと判断に進みます（push-to-talk。常時聞き取りはしません）。
   画面は 待機中 → 聞き取り中 → 文字起こし中 → Jev が判断中 → 完了 の順に切り替わり、
   処理中のカードだけが強調されます。文字起こしは final transcript を 1 回だけ Jev に送ります。
