@@ -3,12 +3,15 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const state = { labels: null, thresholds: null, busy: false };
+  const state = { labels: null, thresholds: null, busy: false, mode: "text", recording: false,
+                  voiceAvailable: false, voiceState: "unconfigured" };
 
   // ---- stage flow: which card is "active" right now --------------------------
   const STAGE_TO_CARD = { idle: null, listening: "card-input", transcribing: "card-transcript",
                           deciding: "card-jev", complete: "card-action", error: null };
   const CARD_ORDER = ["card-input", "card-transcript", "card-jev", "card-action"];
+  const STAGE_LABEL = { idle: "", listening: "聞き取り中…", transcribing: "文字起こし中…", deciding: "Jev が判断中…",
+                        complete: "", error: "" };
 
   function setStage(stage) {
     const activeId = STAGE_TO_CARD[stage] || null;
@@ -21,10 +24,36 @@
     document.querySelectorAll(".arrow").forEach((arrow, index) => {
       arrow.classList.toggle("active", activeIndex >= 0 && index < activeIndex);
     });
-    $("transcript-status").textContent = stage === "transcribing" ? "文字起こし中…" : "";
-    $("input-status").textContent = stage === "deciding" ? "Jev が判断中…" : "";
+    $("transcript-status").textContent = stage === "transcribing" ? "端末内 STT で文字起こし中…" : "";
+    $("input-status").textContent = stage === "deciding" ? STAGE_LABEL.deciding : "";
+    if (state.mode === "voice") {
+      if (stage === "listening") $("voice-state").textContent = STAGE_LABEL.listening;
+      else if (stage === "transcribing" || stage === "deciding") $("voice-state").textContent = STAGE_LABEL[stage];
+      else if (stage === "complete" || stage === "idle") $("voice-state").textContent = state.voiceState === "ready" ? "待機中" : voiceStateLabel();
+    }
   }
-  window.jvd = { setStage };
+
+  function setMeter(level) {
+    const width = Math.min(100, Math.round(Math.sqrt(Math.max(0, level)) * 130));
+    $("meter-fill").style.width = width + "%";
+  }
+
+  function voiceStateLabel() {
+    switch (state.voiceState) {
+      case "ready": return "待機中";
+      case "starting": return "端末内 STT を準備中…（モデル読み込み）";
+      case "error": return "端末内 STT を使えません";
+      default: return "端末内 STT は未設定";
+    }
+  }
+
+  function setVoiceState(voiceState, message) {
+    state.voiceState = voiceState;
+    $("rec-start").disabled = voiceState !== "ready" || state.recording;
+    if (!state.recording) $("voice-state").textContent = voiceStateLabel();
+    if (voiceState === "error" && message) showBanner(message);
+  }
+  window.jvd = { setStage, setMeter, setVoiceState };
 
   // ---- rendering ----------------------------------------------------------------
   function percent(value) { return `${Math.round(value * 100)}%`; }
@@ -44,10 +73,9 @@
 
   function renderDecisions(d) {
     const L = state.labels;
-    const intentRows = L.intent_ids.map((id) => ({
+    renderBars($("intent-bars"), L.intent_ids.map((id) => ({
       label: L.intent[id], value: d.intent.probabilities[id] ?? 0, selected: id === d.intent.selected,
-    }));
-    renderBars($("intent-bars"), intentRows);
+    })));
     $("intent-confidence").textContent = d.intent.confidence.toFixed(2);
 
     const yes = d.needs_response.probability_yes;
@@ -124,7 +152,21 @@
     $("card-action").classList.remove("highlighted");
   }
 
-  // ---- actions ----------------------------------------------------------------
+  async function showResult(result) {
+    if (!result.ok) {
+      setStage("error");
+      showBanner(result.error_message || "Jevから判断を取得できませんでした");
+      return;
+    }
+    $("transcript").textContent = result.transcript;
+    $("transcript").classList.remove("placeholder");
+    renderDecisions(result.decisions);
+    renderAction(result);
+    setStage("complete");
+    renderHistory(await window.pywebview.api.history());
+  }
+
+  // ---- text mode ----------------------------------------------------------------
   async function decide() {
     if (state.busy) return;
     const text = $("input-text").value;
@@ -137,17 +179,7 @@
     $("transcript").classList.remove("placeholder");
     setStage("deciding");
     try {
-      const result = await window.pywebview.api.decide(text);
-      if (!result.ok) {
-        setStage("error");
-        showBanner(result.error_message || "Jevから判断を取得できませんでした");
-        return;
-      }
-      $("transcript").textContent = result.transcript;
-      renderDecisions(result.decisions);
-      renderAction(result);
-      setStage("complete");
-      renderHistory(await window.pywebview.api.history());
+      await showResult(await window.pywebview.api.decide(text));
     } catch (_error) {
       setStage("error");
       showBanner("Jevから判断を取得できませんでした");
@@ -157,10 +189,92 @@
     }
   }
 
+  // ---- voice mode ---------------------------------------------------------------
+  function setRecordingUi(recording) {
+    state.recording = recording;
+    $("rec-start").hidden = recording;
+    $("rec-start").disabled = state.voiceState !== "ready" || recording;
+    $("rec-stop").hidden = !recording;
+    $("rec-cancel").hidden = !recording;
+    $("card-input").classList.toggle("recording", recording);
+  }
+
+  let meterTimer = null;
+  function startMeterPolling() {
+    stopMeterPolling();
+    meterTimer = setInterval(async () => {
+      try {
+        const m = await window.pywebview.api.meter_level();
+        setMeter(m.level || 0);
+        if (state.recording) $("voice-state").textContent = `${STAGE_LABEL.listening} ${m.seconds.toFixed(1)} 秒`;
+      } catch (_error) { /* ignore transient bridge errors */ }
+    }, 100);
+  }
+  function stopMeterPolling() {
+    if (meterTimer !== null) { clearInterval(meterTimer); meterTimer = null; }
+    setMeter(0);
+  }
+
+  async function startRecording() {
+    if (state.busy || state.recording) return;
+    showBanner("");
+    const reply = await window.pywebview.api.start_listening();
+    if (!reply.ok) { showBanner(reply.error_message || "マイクを開けませんでした"); return; }
+    resetOutputs();
+    $("transcript").textContent = "（話し終えたら「停止」を押してください）";
+    $("transcript").classList.add("placeholder");
+    setRecordingUi(true);
+    setStage("listening");
+    startMeterPolling();
+  }
+
+  async function stopRecording() {
+    if (!state.recording || state.busy) return;
+    state.busy = true;
+    $("rec-stop").disabled = true;
+    stopMeterPolling();
+    setRecordingUi(false);
+    setStage("transcribing");
+    try {
+      await showResult(await window.pywebview.api.stop_listening());
+    } catch (_error) {
+      setStage("error");
+      showBanner("Jevから判断を取得できませんでした");
+    } finally {
+      state.busy = false;
+      $("rec-stop").disabled = false;
+    }
+  }
+
+  async function cancelRecording() {
+    if (!state.recording) return;
+    stopMeterPolling();
+    await window.pywebview.api.cancel_listening();
+    setRecordingUi(false);
+    setStage("idle");
+  }
+
+  function setMode(mode) {
+    if (mode === "voice" && !state.voiceAvailable) return;
+    if (state.recording) return;
+    state.mode = mode;
+    $("mode-text").classList.toggle("active", mode === "text");
+    $("mode-voice").classList.toggle("active", mode === "voice");
+    $("text-panel").hidden = mode !== "text";
+    $("voice-panel").hidden = mode !== "voice";
+    $("privacy-note").hidden = mode !== "voice";
+    if (mode === "voice") $("voice-state").textContent = voiceStateLabel();
+    setStage("idle");
+  }
+
   async function init() {
     const status = await window.pywebview.api.status();
     state.labels = status.labels;
     state.thresholds = status.thresholds;
+    state.voiceAvailable = !!status.voice_available;
+    state.voiceState = status.voice_state || "unconfigured";
+    $("mode-voice").disabled = !state.voiceAvailable;
+    if (state.voiceAvailable) $("mode-voice").title = "";
     const examples = await window.pywebview.api.examples();
     const wrap = $("examples");
     examples.forEach((text) => {
@@ -171,11 +285,18 @@
     });
     if (status.startup_error) showBanner(status.startup_error_message || "Jev クライアントを初期化できませんでした");
     else if (!status.api_key_present) showBanner("TypeSafe の API キーが設定されていません（環境変数 TYPESAFE_API_KEY）");
+    else if (status.voice_state === "error" && status.voice_error_message) showBanner(status.voice_error_message);
     $("decide").addEventListener("click", decide);
     $("input-text").addEventListener("keydown", (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") decide();
     });
-    setStage("idle");
+    $("mode-text").addEventListener("click", () => setMode("text"));
+    $("mode-voice").addEventListener("click", () => setMode("voice"));
+    $("rec-start").addEventListener("click", startRecording);
+    $("rec-stop").addEventListener("click", stopRecording);
+    $("rec-cancel").addEventListener("click", cancelRecording);
+    setVoiceState(state.voiceState, "");
+    setMode("text");
   }
 
   window.addEventListener("pywebviewready", () => { init().catch(() => showBanner("初期化に失敗しました")); });

@@ -4,7 +4,22 @@ from app.config import Settings
 from app.jev.client import JevClient
 from app.main import Api
 from app.pipeline import Pipeline
+from app.stt.parakeet import SttError
 from tests.fakes import DUMMY_KEY, FakeTransport, answer_body
+
+
+class FakeTranscriber:
+    name = "fake"
+    state = "ready"
+
+    def __init__(self, text: str = "料金について詳しく知りたいです", error: str | None = None):
+        self.text, self.error, self.calls = text, error, 0
+
+    def transcribe(self, pcm16: bytes) -> str:
+        self.calls += 1
+        if self.error:
+            raise SttError(self.error)
+        return self.text
 
 
 def make_pipeline(fake: FakeTransport | None = None, **kwargs) -> Pipeline:
@@ -24,6 +39,43 @@ def test_text_runs_end_to_end():
     assert stages == ["deciding", "complete"]
     payload = result.to_dict()
     assert payload["ok"] and payload["decisions"]["intent"]["selected"] == "question"
+
+
+def test_audio_runs_through_stt_then_exactly_one_jev_call():
+    stages: list[str] = []
+    fake = FakeTransport()
+    transcriber = FakeTranscriber()
+    pipeline = make_pipeline(fake, transcriber=transcriber, on_stage=stages.append)
+    result = pipeline.run_audio(b"\x00\x10" * 16000)
+    assert result.ok and result.transcript == "料金について詳しく知りたいです"
+    assert transcriber.calls == 1 and len(fake.requests) == 1
+    assert fake.requests[0]["json"]["state"]["utterance"] == "料金について詳しく知りたいです"
+    assert stages == ["transcribing", "deciding", "complete"]
+
+
+def test_audio_stt_failure_never_reaches_jev():
+    stages: list[str] = []
+    fake = FakeTransport()
+    pipeline = make_pipeline(fake, transcriber=FakeTranscriber(error="stt_timeout"), on_stage=stages.append)
+    result = pipeline.run_audio(b"\x00\x10" * 16000)
+    assert result.ok is False and result.error_code == "stt_timeout"
+    assert result.error_message == "端末内 STT が時間内に応答しませんでした"
+    assert fake.requests == [] and stages == ["transcribing", "error"]
+
+
+def test_silent_audio_is_reported_without_calling_stt_or_jev():
+    fake = FakeTransport()
+    transcriber = FakeTranscriber()
+    result = make_pipeline(fake, transcriber=transcriber).run_audio(bytes(32000))
+    assert result.ok is False and result.error_code == "no_speech"
+    assert result.error_message == "音声が検出されませんでした。もう一度話してください"
+    assert transcriber.calls == 0 and fake.requests == []
+
+
+def test_audio_without_transcriber_is_refused():
+    fake = FakeTransport()
+    result = make_pipeline(fake).run_audio(b"\x00\x10" * 16000)
+    assert result.error_code == "stt_unconfigured" and fake.requests == []
 
 
 def test_empty_and_too_long_inputs_never_reach_jev():
@@ -74,5 +126,9 @@ def test_page_api_never_raises():
     payload = empty.decide("こんばんは")
     assert payload["error_code"] == "api_key_missing"
     assert empty.status()["startup_error"] == "api_key_missing"
+    assert empty.status()["voice_available"] is False and empty.status()["voice_state"] == "unconfigured"
     assert empty.history() == []
     assert len(Api(None, Settings()).examples()) >= 4
+    assert api.start_listening()["ok"] is False  # no transcriber configured
+    assert api.stop_listening()["error_code"] == "audio_too_short"  # nothing was recording
+    assert api.cancel_listening()["ok"] is True

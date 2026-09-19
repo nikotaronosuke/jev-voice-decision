@@ -10,6 +10,8 @@
   --warn-soft: #fef3c7;
   --hold: #7c3aed;
   --hold-soft: #ede9fe;
+  --rec: #dc2626;
+  --rec-soft: #fee2e2;
   --bar: #93c5fd;
   --bar-strong: #2563eb;
 }
@@ -61,6 +63,7 @@ h3 { margin: 16px 0 6px; font-size: 15px; font-weight: 600; }
 }
 .card.active { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .card.done { border-color: #cbd5e1; }
+.card.recording { border-color: var(--rec); box-shadow: 0 0 0 4px var(--rec-soft); }
 
 .arrow { align-self: center; color: #cbd5e1; font-size: 30px; padding: 0 2px; transition: color 160ms ease; }
 .arrow.active { color: var(--accent); }
@@ -71,12 +74,15 @@ textarea {
 }
 textarea:focus { border-color: var(--accent); }
 
-.row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.row { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
 .primary {
   background: var(--accent); color: #fff; border: 0; padding: 10px 22px;
   border-radius: 10px; font-size: 16px; cursor: pointer;
 }
-.primary:disabled { opacity: 0.5; cursor: wait; }
+.primary.big { padding: 16px 30px; font-size: 20px; border-radius: 14px; }
+.primary.danger { background: var(--rec); }
+.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); padding: 10px 16px; border-radius: 10px; font-size: 15px; cursor: pointer; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
@@ -84,6 +90,10 @@ textarea:focus { border-color: var(--accent); }
   padding: 6px 12px; font-size: 14px; cursor: pointer; text-align: left;
 }
 .chip:hover { border-color: var(--accent); }
+
+.voice-state { font-size: 22px; margin: 12px 0 8px; min-height: 1.6em; }
+.meter { height: 14px; background: #f3f4f6; border-radius: 7px; overflow: hidden; margin: 6px 0 14px; }
+.meter-fill { height: 100%; width: 0; background: linear-gradient(90deg, #86efac, #22c55e 60%, #f59e0b); border-radius: 7px; transition: width 80ms linear; }
 
 .transcript { font-size: 24px; margin: 6px 0; word-break: break-word; }
 .placeholder { color: #9ca3af; }

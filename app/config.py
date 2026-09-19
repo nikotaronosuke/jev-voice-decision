@@ -31,6 +31,34 @@ class Settings:
 DEFAULT_SETTINGS = Settings()
 
 
+@dataclass(frozen=True)
+class VoiceSettings:
+    """Local speech recognition. Paths point at a NeMo environment and a Parakeet JA checkpoint; they live in .env."""
+
+    wsl_distro: str = "Ubuntu"
+    wsl_python: str = ""          # JVD_PARAKEET_WSL_PYTHON  (WSL path to the NeMo venv's python)
+    model_dir: str = ""           # JVD_PARAKEET_MODEL_DIR   (WSL path holding exactly one *.nemo)
+    extracted_dir: str = ""       # JVD_PARAKEET_EXTRACTED_DIR (optional, pre-extracted checkpoint, read-only)
+    precision: str = "fp32"
+    ready_timeout_s: float = 240.0
+    request_timeout_s: float = 60.0
+    min_utterance_s: float = 0.3
+    max_utterance_s: float = 30.0
+
+    def configured(self) -> bool:
+        return bool(self.wsl_python and self.model_dir)
+
+
+def voice_settings_from_env() -> VoiceSettings:
+    return VoiceSettings(
+        wsl_distro=os.environ.get("JVD_WSL_DISTRO") or "Ubuntu",
+        wsl_python=os.environ.get("JVD_PARAKEET_WSL_PYTHON") or "",
+        model_dir=os.environ.get("JVD_PARAKEET_MODEL_DIR") or "",
+        extracted_dir=os.environ.get("JVD_PARAKEET_EXTRACTED_DIR") or "",
+        precision=os.environ.get("JVD_PARAKEET_PRECISION") or "fp32",
+    )
+
+
 def load_dotenv_if_present(path: Path | None = None) -> bool:
     """Populate os.environ from an untracked .env (KEY=VALUE lines). Existing variables win."""
     path = path or PROJECT_ROOT / ".env"

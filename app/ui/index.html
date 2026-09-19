@@ -14,7 +14,7 @@
     </div>
     <div class="mode" role="group" aria-label="モード">
       <button id="mode-text" class="mode-btn active" type="button">TEXT</button>
-      <button id="mode-voice" class="mode-btn" type="button" disabled title="Phase 2 で有効になります">VOICE</button>
+      <button id="mode-voice" class="mode-btn" type="button" disabled title="端末内 STT が設定されると有効になります">VOICE</button>
     </div>
   </header>
 
@@ -23,13 +23,27 @@
   <main class="flow">
     <section class="card" id="card-input" data-stage="input">
       <h2>🎙 INPUT</h2>
-      <textarea id="input-text" rows="5" placeholder="例：これって無料で使えますか？"></textarea>
-      <div class="row">
-        <button id="decide" class="primary" type="button">判断する</button>
-        <span id="input-status" class="muted"></span>
+
+      <div id="text-panel">
+        <textarea id="input-text" rows="5" placeholder="例：これって無料で使えますか？"></textarea>
+        <div class="row">
+          <button id="decide" class="primary" type="button">判断する</button>
+          <span id="input-status" class="muted"></span>
+        </div>
+        <p class="muted small">Demo examples（クリックで入力欄へ。自動送信はしません）</p>
+        <div id="examples" class="chips"></div>
       </div>
-      <p class="muted small">Demo examples（クリックで入力欄へ。自動送信はしません）</p>
-      <div id="examples" class="chips"></div>
+
+      <div id="voice-panel" hidden>
+        <p id="voice-state" class="voice-state">待機中</p>
+        <div class="meter"><div id="meter-fill" class="meter-fill"></div></div>
+        <div class="row">
+          <button id="rec-start" class="primary big" type="button" disabled>録音開始</button>
+          <button id="rec-stop" class="primary big danger" type="button" hidden>停止</button>
+          <button id="rec-cancel" class="ghost" type="button" hidden>キャンセル</button>
+        </div>
+        <p id="voice-hint" class="muted small">「録音開始」を押して話し、「停止」で文字起こしと判断に進みます。</p>
+      </div>
     </section>
 
     <div class="arrow" aria-hidden="true">→</div>
