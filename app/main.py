@@ -198,7 +198,7 @@ def main() -> None:
 
     api = build_app()
     window = webview.create_window(WINDOW_TITLE, str(UI_DIR / "index.html"), js_api=api,
-                                   width=1380, height=880, min_size=(1000, 700))
+                                   width=1400, height=960, min_size=(1000, 720))
     api.attach_window(window)
     window.events.closed += api.shutdown
     webview.start()
