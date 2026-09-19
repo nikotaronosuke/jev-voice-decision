@@ -13,6 +13,9 @@
 Jev は文章を生成しません。曖昧な日本語の発話を、コードがそのまま分岐に使える
 typed decision（Choice / Noul / Score）に変えます。
 
+> **なぜこの設計にしたか:** [Owner Decision Log](docs/OWNER_DECISIONS.md)  
+> 回答生成ではなく判断だけをAIへ任せた理由、低confidence時の保留、local STT、送信最小化、保存しない方針などをまとめています。
+
 ## 何が起きるか
 
 ```
