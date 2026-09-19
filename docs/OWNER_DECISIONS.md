@@ -1,5 +1,7 @@
 # Owner Decision Log
 
+日本語 | [English](OWNER_DECISIONS.en.md)
+
 Jev Voice Decision は、「音声をAIへ渡して返答文を作らせる」デモではありません。
 
 作りたかったのは、曖昧な日本語の発話を**ソフトウェアがそのまま使える小さな判断**へ変え、
