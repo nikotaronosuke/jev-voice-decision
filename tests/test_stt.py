@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
@@ -47,7 +47,9 @@ def test_pcm16_helpers():
 
 
 def test_windows_path_becomes_wsl_path():
-    assert windows_to_wsl_path(Path("C:/proj/app/stt/parakeet_worker.py")) == "/mnt/c/proj/app/stt/parakeet_worker.py"
+    # PureWindowsPath keeps the Windows meaning of the string on every OS (a plain Path would be POSIX on Linux)
+    assert windows_to_wsl_path(PureWindowsPath("C:/proj/app/stt/parakeet_worker.py")) == "/mnt/c/proj/app/stt/parakeet_worker.py"
+    assert windows_to_wsl_path(PureWindowsPath(r"D:\data\models\parakeet-ja")) == "/mnt/d/data/models/parakeet-ja"
 
 
 def test_worker_command_and_environment_never_carry_credentials(monkeypatch):

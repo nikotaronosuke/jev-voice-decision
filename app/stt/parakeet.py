@@ -9,7 +9,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePath, PureWindowsPath
 
 from app.config import PROJECT_ROOT, VoiceSettings
 from app.stt.audio import pcm16_seconds
@@ -40,8 +40,11 @@ class SttError(RuntimeError):
         return STT_MESSAGES_JA.get(self.code, STT_MESSAGES_JA["stt_failed"])
 
 
-def windows_to_wsl_path(path: Path) -> str:
-    path = path.resolve()
+def windows_to_wsl_path(path: PurePath) -> str:
+    """Windows path -> /mnt/<drive>/... . Concrete paths are resolved first; pure paths are converted as given."""
+    if isinstance(path, Path):
+        path = path.resolve()
+    path = PureWindowsPath(path)
     drive = path.drive.rstrip(":").lower()
     return "/mnt/" + drive + "/" + "/".join(path.parts[1:]).replace("\\", "/")
 
