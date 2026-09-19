@@ -2,6 +2,8 @@
 
 日本語の音声を文字起こしし、Jevで“回答生成ではなく判断”を行うリアルタイムデモ。
 
+[英語版 README](README.en.md)
+
 ![RAPID DEMO の様子: 架空のコメントが次々に typed decision とアクションへ変わる](docs/assets/jev-voice-decision-demo.gif)
 
 約 30 秒の紹介動画（mp4）は [Releases](https://github.com/nikotaronosuke/jev-voice-decision/releases) に置いています。上の GIF は実際の画面録画です（速度は変えていません）。
