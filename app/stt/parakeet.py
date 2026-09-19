@@ -121,7 +121,8 @@ class ParakeetTranscriber:
             try:
                 event = self._events.get(timeout=0.5)
             except queue.Empty:
-                if self.process.poll() is not None:
+                process = self.process
+                if process is None or process.poll() is not None:  # closed while starting
                     break
                 continue
             kind = event.get("kind")

@@ -149,3 +149,22 @@ textarea:focus { border-color: var(--accent); }
   .arrow { display: none; }
   .card { min-height: 0; }
 }
+
+/* rapid demo */
+.rapid { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.rapid-btn { background: var(--ink); color: #fff; border: 0; padding: 9px 18px; border-radius: 10px; font-size: 14px; letter-spacing: 0.08em; cursor: pointer; }
+.rapid-btn.running { background: var(--rec); }
+.rapid-btn:disabled { opacity: 0.5; cursor: wait; }
+.rapid-progress { font-size: 18px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.rapid-bar { height: 6px; background: #f3f4f6; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.rapid-bar-fill { height: 100%; width: 0; background: var(--accent); transition: width 120ms linear; }
+.card.rapid-flash { border-color: var(--accent); }
+
+/* intent colours (subtle, shared by bars, action card and history) */
+.intent-question { --intent: #2563eb; --intent-soft: #dbeafe; }
+.intent-impression { --intent: #059669; --intent-soft: #d1fae5; }
+.intent-request { --intent: #d97706; --intent-soft: #fef3c7; }
+.intent-other { --intent: #6b7280; --intent-soft: #f3f4f6; }
+.bar-row.selected.intent-question .bar-fill, .bar-row.selected.intent-impression .bar-fill,
+.bar-row.selected.intent-request .bar-fill, .bar-row.selected.intent-other .bar-fill { background: var(--intent); }
+.action-intent.tinted { display: inline-block; padding: 2px 12px; border-radius: 999px; background: var(--intent-soft); color: var(--intent); }

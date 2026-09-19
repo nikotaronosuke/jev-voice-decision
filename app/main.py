@@ -17,6 +17,7 @@ from app.config import (DEFAULT_SETTINGS, PROJECT_ROOT, Settings, VoiceSettings,
 from app.jev.client import ERROR_MESSAGES_JA, JevClient, JevError
 from app.jev.questions import INTENT_IDS, INTENT_LABELS_JA, PRIORITY_LABELS_JA, PRIORITY_LEVELS
 from app.pipeline import Pipeline
+from app.rapid import RapidDemo, load_rapid_comments
 from app.stt.microphone import MicrophoneCapture, MicrophoneError
 from app.stt.parakeet import STT_MESSAGES_JA, ParakeetTranscriber, SttError
 
@@ -49,6 +50,7 @@ class Api:
         self._capture: MicrophoneCapture | None = None
         self._capture_lock = threading.Lock()
         self._level = 0.0
+        self._rapid: RapidDemo | None = None
 
     # ---- plumbing -----------------------------------------------------------
     def attach_window(self, window: Any) -> None:
@@ -120,6 +122,23 @@ class Api:
 
     def history(self) -> list[dict[str, Any]]:
         return self._pipeline.history() if self._pipeline else []
+
+    # ---- rapid demo: one real request at a time, driven step by step from the page ----
+    def rapid_start(self) -> dict[str, Any]:
+        if self._pipeline is None:
+            return {"ok": False, "error_message": ERROR_MESSAGES_JA.get(self._startup_error or "unknown", ERROR_MESSAGES_JA["unknown"])}
+        self._rapid = RapidDemo(self._pipeline)
+        return {"ok": True, "total": self._rapid.total}
+
+    def rapid_step(self) -> dict[str, Any]:
+        if self._rapid is None:
+            return {"done": True, "index": 0, "total": len(load_rapid_comments()), "stopped": True}
+        return self._rapid.step()
+
+    def rapid_stop(self) -> dict[str, Any]:
+        if self._rapid is not None:
+            self._rapid.stop()
+        return {"ok": True}
 
     def start_listening(self) -> dict[str, Any]:
         if self._transcriber is None:

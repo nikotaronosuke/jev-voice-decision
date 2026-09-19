@@ -28,7 +28,7 @@ class Pipeline:
         self.clock = clock
         self._history: deque[HistoryEntry] = deque(maxlen=settings.history_limit)
 
-    def run_text(self, text: str) -> PipelineResult:
+    def run_text(self, text: str, *, record_history: bool = True) -> PipelineResult:
         transcript = " ".join(text.split())
         if not transcript:
             return PipelineResult(ok=False, transcript="", decisions=None, action=None,
@@ -36,7 +36,7 @@ class Pipeline:
         if len(transcript) > MAX_TRANSCRIPT_CHARS:
             return PipelineResult(ok=False, transcript=transcript[:MAX_TRANSCRIPT_CHARS], decisions=None, action=None,
                                   error_code="too_long", error_message=f"{MAX_TRANSCRIPT_CHARS} 文字以内で入力してください")
-        return self._decide(transcript)
+        return self._decide(transcript, record_history)
 
     def run_audio(self, pcm16: bytes) -> PipelineResult:
         """Final transcript from the local engine, then exactly one Jev call. The audio bytes are not kept."""
@@ -57,7 +57,7 @@ class Pipeline:
             del pcm16
         return self.run_text(transcript)
 
-    def _decide(self, transcript: str) -> PipelineResult:
+    def _decide(self, transcript: str, record_history: bool = True) -> PipelineResult:
         self.on_stage("deciding")
         try:
             decisions = self.jev.decide(transcript)
@@ -66,7 +66,8 @@ class Pipeline:
             return PipelineResult(ok=False, transcript=transcript, decisions=None, action=None,
                                   error_code=error.code, error_message=error.message_ja)
         action = decide_action(decisions, self.settings)
-        self._history.appendleft(HistoryEntry(
+        if record_history:
+            self._history.appendleft(HistoryEntry(
             time_label=time.strftime("%H:%M", time.localtime(self.clock())),
             transcript=transcript,
             intent="保留" if action.hold else INTENT_LABELS_JA[decisions.intent.selected],

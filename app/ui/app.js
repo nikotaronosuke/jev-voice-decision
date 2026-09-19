@@ -62,7 +62,7 @@
     container.innerHTML = "";
     rows.forEach((row) => {
       const el = document.createElement("div");
-      el.className = "bar-row" + (row.selected ? " selected" : "");
+      el.className = "bar-row" + (row.selected ? " selected" : "") + (row.cls ? " " + row.cls : "");
       el.innerHTML = `<span class="bar-label"></span><div class="bar-track"><div class="bar-fill"></div></div><span class="bar-value"></span>`;
       el.querySelector(".bar-label").textContent = row.label;
       el.querySelector(".bar-value").textContent = percent(row.value);
@@ -74,7 +74,7 @@
   function renderDecisions(d) {
     const L = state.labels;
     renderBars($("intent-bars"), L.intent_ids.map((id) => ({
-      label: L.intent[id], value: d.intent.probabilities[id] ?? 0, selected: id === d.intent.selected,
+      label: L.intent[id], value: d.intent.probabilities[id] ?? 0, selected: id === d.intent.selected, cls: "intent-" + id,
     })));
     $("intent-confidence").textContent = d.intent.confidence.toFixed(2);
 
@@ -109,6 +109,7 @@
     const a = result.action;
     const d = result.decisions;
     $("action-intent").textContent = a.hold ? "⚠ 判断保留" : L.intent[d.intent.selected];
+    $("action-intent").className = "action-intent" + (a.hold ? "" : " tinted intent-" + d.intent.selected);
     $("action-label").textContent = L.action[a.action] || a.action;
     const badges = [];
     if (a.hold) badges.push(["hold", "confidence が demo threshold 未満"]);
@@ -254,9 +255,78 @@
     setStage("idle");
   }
 
+  // ---- rapid demo: one real request at a time, rendered as it arrives ----
+  const rapid = { running: false, stopRequested: false, finished: false };
+  const RAPID_DWELL_MS = 160;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function setRapidUi() {
+    const btn = $("rapid-btn");
+    btn.classList.toggle("running", rapid.running);
+    btn.textContent = rapid.running ? "停止" : (rapid.finished ? "もう一度見る" : "RAPID DEMO");
+    $("decide").disabled = rapid.running;
+    $("input-text").readOnly = rapid.running;
+    $("mode-voice").disabled = rapid.running || !state.voiceAvailable;
+  }
+
+  function setRapidProgress(index, total) {
+    $("rapid-progress").hidden = false;
+    $("rapid-bar").hidden = false;
+    $("rapid-progress").textContent = `${index} / ${total}`;
+    $("rapid-bar-fill").style.width = total ? `${Math.round((index / total) * 100)}%` : "0%";
+  }
+
+  async function runRapidDemo() {
+    const started = await window.pywebview.api.rapid_start();
+    if (!started.ok) { showBanner(started.error_message || "Jevから判断を取得できませんでした"); return; }
+    rapid.running = true; rapid.stopRequested = false; rapid.finished = false;
+    state.busy = true;
+    showBanner("");
+    setRapidUi();
+    setRapidProgress(0, started.total);
+    try {
+      while (!rapid.stopRequested) {
+        setStage("deciding");
+        const step = await window.pywebview.api.rapid_step();
+        if (!("text" in step)) break;
+        $("input-text").value = step.text;
+        $("transcript").textContent = step.text;
+        $("transcript").classList.remove("placeholder");
+        setRapidProgress(step.index, step.total);
+        if (step.result.ok) {
+          renderDecisions(step.result.decisions);
+          renderAction(step.result);
+          setStage("complete");
+        } else {
+          resetOutputs();
+          setStage("error");
+          $("action-empty").textContent = step.result.error_message || "Jevから判断を取得できませんでした";
+          $("action-empty").hidden = false;
+        }
+        if (step.done) break;
+        await sleep(RAPID_DWELL_MS);
+      }
+    } finally {
+      rapid.running = false; rapid.finished = true;
+      state.busy = false;
+      $("action-empty").textContent = "（Python の規則で決まったアクションがここに表示されます）";
+      setRapidUi();
+    }
+  }
+
+  async function onRapidButton() {
+    if (rapid.running) {
+      rapid.stopRequested = true;
+      await window.pywebview.api.rapid_stop();
+      return;
+    }
+    if (state.recording) return;
+    await runRapidDemo();
+  }
+
   function setMode(mode) {
     if (mode === "voice" && !state.voiceAvailable) return;
-    if (state.recording) return;
+    if (state.recording || rapid.running) return;
     state.mode = mode;
     $("mode-text").classList.toggle("active", mode === "text");
     $("mode-voice").classList.toggle("active", mode === "voice");
@@ -295,6 +365,7 @@
     $("rec-start").addEventListener("click", startRecording);
     $("rec-stop").addEventListener("click", stopRecording);
     $("rec-cancel").addEventListener("click", cancelRecording);
+    $("rapid-btn").addEventListener("click", onRapidButton);
     setVoiceState(state.voiceState, "");
     setMode("text");
   }
