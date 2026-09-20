@@ -11,8 +11,6 @@ Japanese speech
 
 It also demonstrates abstention when confidence is low.
 
-> **Why these choices?** Read the [Owner Decision Log](docs/OWNER_DECISIONS.en.md) — model responsibility, abstention, local STT, minimal context, and non-persistence.
-
 ## What it does
 
 - Three Jev questions are sent in one call: **Choice** (main intent: question / impression / request / other), **Noul** (does it need a reply?) and **Score** (priority on a 4-level rubric). Jev returns a selected option, the full probability distribution and a confidence value, never free text.
